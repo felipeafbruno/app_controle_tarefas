@@ -33,6 +33,6 @@ Route::resource('tarefa', 'App\Http\Controllers\TarefaController')
 // Mensagem
 Route::get('mensagem-teste', function () {
     // return new MensagemTesteMail();
-    Mail::to('bernasafb@gmial.com')->send(new MensagemTesteMail());
+    Mail::to('')->send(new MensagemTesteMail());
     return 'Email enviado com sucesso!';
 });
