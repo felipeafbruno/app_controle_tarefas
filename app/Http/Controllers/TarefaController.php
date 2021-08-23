@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\AtualizadaTarefaMail;
+use App\Mail\NovaTarefaMail;
 use App\Models\Tarefa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class TarefaController extends Controller
 {
@@ -20,11 +23,14 @@ class TarefaController extends Controller
      */
     public function index()
     {
-        $id = Auth::user()->id;
-        $nome = Auth::user()->name;
-        $email = Auth::user()->email;
+        $user_id = auth()->user()->id;
+        $tarefas = Tarefa::where('user_id', '=', $user_id)->paginate(2);
+        return view('tarefa.index', ['tarefas' => $tarefas]);
+        
+        // $id = Auth::user()->id;
+        // $nome = Auth::user()->name;
+        // $email = Auth::user()->email;
 
-        return "ID: $id | Nome: $nome | Email: $email";
 
         // if(Auth::check()) {
         //     $id = Auth::user()->id;
@@ -54,7 +60,7 @@ class TarefaController extends Controller
      */
     public function create()
     {
-        //
+        return view('tarefa.create');
     }
 
     /**
@@ -65,7 +71,13 @@ class TarefaController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        // no método all() pode ser passado os parametros desejados da Request;
+        $dados = $request->all('tarefa', 'data_limite_conclusao');
+        $dados['user_id'] = auth()->user()->id;
+        $tarefa = Tarefa::create($dados);
+        $destinatario = auth()->user()->email; 
+        Mail::to($destinatario)->send(new NovaTarefaMail($tarefa));
+        return redirect()->route('tarefa.show', ['tarefa' => $tarefa->id]);
     }
 
     /**
@@ -76,7 +88,7 @@ class TarefaController extends Controller
      */
     public function show(Tarefa $tarefa)
     {
-        //
+        return view('tarefa.show', ['tarefa' => $tarefa]);
     }
 
     /**
@@ -87,7 +99,14 @@ class TarefaController extends Controller
      */
     public function edit(Tarefa $tarefa)
     {
-        //
+        $user_id = auth()->user()->id;
+        $tarefa->user_id;
+        
+        if($tarefa->user_id == $user_id) {
+            return view('tarefa.edit', ['tarefa' => $tarefa]);
+        } else {
+            return view('acesso-negado');
+        }
     }
 
     /**
@@ -98,8 +117,32 @@ class TarefaController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, Tarefa $tarefa)
-    {
-        //
+    {   
+        $user_id = auth()->user()->id;
+        if($tarefa->user_id == $user_id) {
+            return view('acesso-negado');       
+        } 
+
+        $dados_antigos = [
+            'tarefa' => $tarefa->getOriginal()['tarefa'],
+            'data_limite_conclusao' => $tarefa->getOriginal()['data_limite_conclusao']
+        ];
+
+        $tarefa->update($request->all());
+
+        $dados_novos = [
+            'tarefa' => $tarefa['tarefa'],
+            'data_limite_conclusao' => $tarefa['data_limite_conclusao']
+        ];
+
+        $id_tarefa = $tarefa['id'];
+
+        $destinatario = auth()->user()->email;
+
+        Mail::to($destinatario)->send(new AtualizadaTarefaMail($dados_antigos, $dados_novos, $id_tarefa));
+        
+        return redirect()->route('tarefa.show', ['tarefa' => $tarefa->id]);
+        
     }
 
     /**
@@ -110,6 +153,13 @@ class TarefaController extends Controller
      */
     public function destroy(Tarefa $tarefa)
     {
-        //
+        $user_id = auth()->user()->id;
+
+        if(!$tarefa->user_id == $user_id) {
+            return view('acesso-negado');
+        }
+
+        $tarefa->delete();
+        return redirect()->route('tarefa.index');
     }
 }
