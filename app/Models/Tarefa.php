@@ -9,4 +9,9 @@ class Tarefa extends Model
 {
     use HasFactory;
     protected $fillable = ['tarefa', 'data_limite_conclusao', 'user_id'];
+
+    public function user() {
+        // belongsTo (Pertence a)
+        return $this->belongsTo('App\Models\User');
+    }
 }
