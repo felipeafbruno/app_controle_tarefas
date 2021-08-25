@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\TarefasExport;
-
+use PDF;
 
 class TarefaController extends Controller
 {
@@ -167,16 +167,22 @@ class TarefaController extends Controller
     }
 
     public function exportacao($extensao) {
-        $nome_arquivo = 'lista-de-tarefas';
-        
-        if($extensao == 'xlsx') {
-            $nome_arquivo .= '.'.$extensao;
-        } else if($extensao == 'csv') {
-            $nome_arquivo .= '.'.$extensao;
-        } else {
-            return redirect()->route('tarefa.index');
+        if(in_array($extensao, ['xlsx', 'csv', 'pdf'])) {
+            return Excel::download(new TarefasExport, 'lista_de_tarefas.'.$extensao);
         }
 
-        return Excel::download(new TarefasExport, $nome_arquivo);
+        return redirect()->route('tarefa.index');
+    }
+
+    public function exportar() {
+        $tarefas = auth()->user()->tarefas()->get();
+        $pdf = PDF::loadView('tarefa.pdf', ['tarefas' => $tarefas]);
+        
+        // primeiro parametro é o tipo de papel
+        // segundo parametro determina a orientação da impressão: LandScape/Portrait
+        $pdf->setPaper('a4', 'landscape');
+        
+        // return $pdf->download('lista_de_tarefas.pdf');
+        return $pdf->stream('lista_de_tarefas.pdf');
     }
 }
